@@ -21,7 +21,6 @@
             margin: auto;
             padding: 15px;
         }
-        /* Contenedor general que simula el coche / dashcam */
         .dashcam-container {
             background: #111827;
             border: 3px solid #1f2937;
@@ -29,12 +28,11 @@
             overflow: hidden;
             box-shadow: 0 12px 32px rgba(0,0,0,0.8);
         }
-        /* Ventana del Video (Parabrisas) */
         .video-viewport {
             position: relative;
             width: 100%;
             background: #000;
-            aspect-ratio: 4 / 3; /* Proporcion de parabrisas / cámara frontal limpia */
+            aspect-ratio: 4 / 3;
             overflow: hidden;
         }
         #webcam, #renderCanvas {
@@ -48,7 +46,6 @@
         #webcam {
             display: none;
         }
-        /* Badge de grabación discreto dentro del video arriba a la derecha */
         .video-hud-top {
             position: absolute;
             top: 10px;
@@ -70,8 +67,6 @@
             70% { box-shadow: 0 0 0 10px rgba(255, 59, 48, 0); }
             100% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0); }
         }
-
-        /* TABLERO DE INSTRUMENTOS INFERIOR (Estilo Coche) */
         .car-dashboard {
             background: linear-gradient(180deg, #1f2937 0%, #111827 100%);
             border-top: 2px solid #374151;
@@ -80,7 +75,6 @@
             justify-content: space-between;
             align-items: center;
         }
-        /* Sección de datos de telemetría a la izquierda del tablero */
         .dashboard-telemetry {
             font-family: monospace;
             font-size: 0.85rem;
@@ -90,7 +84,6 @@
             color: #ffffff;
             font-weight: bold;
         }
-        /* Velocímetro Central / Derecho estilo digital de auto */
         .dashboard-speedometer {
             background: #030712;
             border: 2px solid #00ffcc;
@@ -125,15 +118,13 @@
         <span id="recStatusIndicator" class="badge bg-secondary"><i class="bi bi-circle-fill"></i> Listo</span>
     </div>
 
-    <!-- Contenedor Estilo Coche (Video arriba + Tablero abajo) -->
+    <!-- Contenedor Estilo Coche -->
     <div class="dashcam-container">
         
-        <!-- Ventana del Video (Limpiar de elementos invasivos) -->
         <div class="video-viewport">
             <video id="webcam" autoplay playsinline muted></video>
             <canvas id="renderCanvas"></canvas>
 
-            <!-- Indicador sutil de grabación en curso -->
             <div id="hudRecBadge" class="video-hud-top d-none">
                 <span class="badge bg-dark bg-opacity-75 text-danger border border-danger">
                     <span class="record-pulse"></span> <span id="timerText" class="font-monospace ms-1">00:00</span>
@@ -141,7 +132,7 @@
             </div>
         </div>
 
-        <!-- Tablero de Instrumentos Inferior (No invasivo, simula el interior del auto) -->
+        <!-- Tablero de Instrumentos Inferior -->
         <div class="car-dashboard">
             <div class="dashboard-telemetry">
                 <div class="mb-1"><i class="bi bi-calendar-event text-info"></i> <span id="dashDate" class="highlight-text">--/--/----</span></div>
@@ -156,6 +147,13 @@
             </div>
         </div>
 
+    </div>
+
+    <!-- Botón para alternar cámara en caso de error de hardware -->
+    <div class="mt-2 text-end">
+        <button id="btnSwitchCamera" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-camera-rotate"></i> Cambiar Cámara
+        </button>
     </div>
 
     <!-- Controles de Grabación -->
@@ -187,13 +185,13 @@
     const ctx = renderCanvas.getContext('2d');
     
     const btnToggleRecord = document.getElementById('btnToggleRecord');
+    const btnSwitchCamera = document.getElementById('btnSwitchCamera');
     const downloadLink = document.getElementById('downloadLink');
     const recStatusIndicator = document.getElementById('recStatusIndicator');
     const hudRecBadge = document.getElementById('hudRecBadge');
     const timerText = document.getElementById('timerText');
     const videoHistory = document.getElementById('videoHistory');
 
-    // Elementos del tablero HTML visual
     const dashDate = document.getElementById('dashDate');
     const dashTime = document.getElementById('dashTime');
     const dashCoords = document.getElementById('dashCoords');
@@ -211,24 +209,51 @@
     let currentLon = 0;
     let currentAlt = 0;
     let currentAccuracy = 0;
+    let useFrontCamera = false; // Por defecto arrancamos con la trasera (environment)
 
+    // Inicializar Cámara con manejo robusto de facingMode
     async function initCamera() {
+        // Detener stream previo si existe
+        if (webcam.srcObject) {
+            webcam.srcObject.getTracks().forEach(track => track.stop());
+        }
+
+        const constraints = {
+            video: {
+                width: { ideal: 1280 },
+                height: { ideal: 960 },
+                facingMode: useFrontCamera ? "user" : { exact: "environment" }
+            },
+            audio: true
+        };
+
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { width: { ideal: 1280 }, height: { ideal: 960 }, facingMode: "environment" },
-                audio: true
-            });
+            let stream;
+            try {
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+            } catch (err) {
+                // Si el dispositivo falla con { exact: "environment" } (algunos celulares antiguos), intentamos modo flexible
+                console.warn("Fallo con exact environment, intentando modo flexible...", err);
+                constraints.video.facingMode = useFrontCamera ? "user" : "environment";
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+            }
+
             webcam.srcObject = stream;
             webcam.onloadedmetadata = () => {
-                // Resolución optimizada para guardar el video completo incluyendo el panel inferior impreso
                 renderCanvas.width = 1080;
-                renderCanvas.height = 1440; // Relación 3:4 (Video arriba + Tablero abajo quemado en el video)
+                renderCanvas.height = 1440;
                 startRenderLoop();
             };
         } catch (err) {
-            alert("Error al acceder a la cámara: " + err.message);
+            alert("No se pudo acceder a la cámara trasera. Asegúrate de dar permisos o abrir el sitio mediante HTTPS/localhost. Detalle: " + err.message);
         }
     }
+
+    // Botón manual para alternar entre cámara trasera y delantera si el hardware lo requiere
+    btnSwitchCamera.addEventListener('click', () => {
+        useFrontCamera = !useFrontCamera;
+        initCamera();
+    });
 
     function initGPS() {
         if (!navigator.geolocation) {
@@ -247,7 +272,6 @@
                 currentAlt = position.coords.altitude ? Math.round(position.coords.altitude) : 0;
                 currentAccuracy = Math.round(position.coords.accuracy);
 
-                // Actualizar interfaz del tablero visual
                 dashSpeed.innerText = currentSpeed;
                 dashCoords.innerText = `Lat: ${currentLat.toFixed(4)} | Lon: ${currentLon.toFixed(4)}`;
                 dashGps.innerText = `±${currentAccuracy}m | Alt: ${currentAlt}m`;
@@ -265,18 +289,14 @@
             if (webcam.readyState === webcam.HAVE_ENOUGH_DATA) {
                 const canvasW = renderCanvas.width;
                 const canvasH = renderCanvas.height;
-                const videoAreaH = canvasW * 0.75; // Altura reservada para el video (parabrisas limpio)
+                const videoAreaH = canvasW * 0.75;
 
-                // 1. DIBUJAR VIDEO LIMPIO EN LA PARTE SUPERIOR
                 ctx.drawImage(webcam, 0, 0, canvasW, videoAreaH);
 
-                // 2. DIBUJAR EL TABLERO DE INSTRUMENTOS EN LA PARTE INFERIOR DEL VIDEO (Quemado para la grabación)
                 ctx.save();
-                // Fondo oscuro sólido para el tablero
                 ctx.fillStyle = '#111827';
                 ctx.fillRect(0, videoAreaH, canvasW, canvasH - videoAreaH);
 
-                // Línea separadora superior del tablero
                 ctx.strokeStyle = '#374151';
                 ctx.lineWidth = 6;
                 ctx.beginPath();
@@ -288,7 +308,6 @@
                 const dateStr = now.toLocaleDateString();
                 const timeStr = now.toLocaleTimeString();
 
-                // Textos de telemetría a la izquierda del tablero impreso
                 ctx.fillStyle = '#9ca3af';
                 ctx.font = 'bold 30px monospace';
                 ctx.fillText(`FECHA:`, 50, videoAreaH + 65);
@@ -312,7 +331,6 @@
                 ctx.fillStyle = '#ffffff';
                 ctx.fillText(`${currentAlt}m (±${currentAccuracy}m)`, 240, videoAreaH + 230);
 
-                // Caja del Velocímetro a la derecha del tablero impreso
                 const speedBoxW = 320;
                 const speedBoxH = 200;
                 const speedBoxX = canvasW - speedBoxW - 50;
@@ -326,20 +344,17 @@
                 ctx.fill();
                 ctx.stroke();
 
-                // Valor numérico de la velocidad gigante
                 ctx.fillStyle = '#00ffcc';
                 ctx.font = 'bold 110px monospace';
                 ctx.textAlign = 'center';
                 ctx.fillText(currentSpeed, speedBoxX + (speedBoxW / 2), speedBoxY + 130);
 
-                // Unidad KM/H
                 ctx.fillStyle = '#9ca3af';
                 ctx.font = 'bold 24px sans-serif';
                 ctx.fillText('KM/H', speedBoxX + (speedBoxW / 2), speedBoxY + 175);
 
                 ctx.restore();
 
-                // Actualizar interfaz HTML en vivo del navegador
                 dashDate.innerText = dateStr;
                 dashTime.innerText = timeStr;
             }
