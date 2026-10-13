@@ -3,32 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GPS Video Recorder - Telemetría Ampliada</title>
+    <title>GPS Dashcam Simulator - Tablero Inferior</title>
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         body {
-            background-color: #121212;
+            background-color: #0b0f19;
             color: #e0e0e0;
             font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
             margin: 0;
             padding-bottom: 40px;
         }
         .app-container {
-            max-width: 600px;
+            max-width: 550px;
             margin: auto;
             padding: 15px;
         }
-        .video-wrapper {
+        /* Contenedor general que simula el coche / dashcam */
+        .dashcam-container {
+            background: #111827;
+            border: 3px solid #1f2937;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 12px 32px rgba(0,0,0,0.8);
+        }
+        /* Ventana del Video (Parabrisas) */
+        .video-viewport {
             position: relative;
             width: 100%;
             background: #000;
-            border-radius: 12px;
+            aspect-ratio: 4 / 3; /* Proporcion de parabrisas / cámara frontal limpia */
             overflow: hidden;
-            aspect-ratio: 9 / 16;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.6);
         }
         #webcam, #renderCanvas {
             width: 100%;
@@ -41,66 +48,17 @@
         #webcam {
             display: none;
         }
-        /* HUD Superior Visual en Pantalla */
-        .hud-top {
+        /* Badge de grabación discreto dentro del video arriba a la derecha */
+        .video-hud-top {
             position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            background: linear-gradient(to bottom, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0) 100%);
-            padding: 15px;
-            font-size: 0.9rem;
-            color: #fff;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            top: 10px;
+            right: 15px;
             z-index: 10;
             pointer-events: none;
-        }
-        /* HUD Inferior Visual en Pantalla */
-        .hud-bottom {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0) 100%);
-            padding: 20px 15px 15px 15px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            z-index: 10;
-            pointer-events: none;
-        }
-        .speedometer-box-ui {
-            background: rgba(0, 0, 0, 0.7);
-            border: 2px solid rgba(0, 255, 204, 0.4);
-            border-radius: 10px;
-            padding: 10px 20px;
-            text-align: center;
-        }
-        .speed-value-ui {
-            font-size: 2.2rem;
-            font-weight: 900;
-            line-height: 1;
-            color: #00ffcc;
-            font-family: monospace;
-        }
-        .speed-unit-ui {
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            color: #aaa;
-        }
-        .gps-status-ui {
-            font-size: 0.85rem;
-            background: rgba(0,0,0,0.7);
-            padding: 10px 15px;
-            border-radius: 8px;
-            border: 1px solid rgba(255,255,255,0.2);
         }
         .record-pulse {
-            width: 14px;
-            height: 14px;
+            width: 12px;
+            height: 12px;
             background-color: #ff3b30;
             border-radius: 50%;
             display: inline-block;
@@ -112,8 +70,50 @@
             70% { box-shadow: 0 0 0 10px rgba(255, 59, 48, 0); }
             100% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0); }
         }
+
+        /* TABLERO DE INSTRUMENTOS INFERIOR (Estilo Coche) */
+        .car-dashboard {
+            background: linear-gradient(180deg, #1f2937 0%, #111827 100%);
+            border-top: 2px solid #374151;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        /* Sección de datos de telemetría a la izquierda del tablero */
+        .dashboard-telemetry {
+            font-family: monospace;
+            font-size: 0.85rem;
+            color: #9ca3af;
+        }
+        .dashboard-telemetry .highlight-text {
+            color: #ffffff;
+            font-weight: bold;
+        }
+        /* Velocímetro Central / Derecho estilo digital de auto */
+        .dashboard-speedometer {
+            background: #030712;
+            border: 2px solid #00ffcc;
+            border-radius: 12px;
+            padding: 8px 20px;
+            text-align: center;
+            box-shadow: inset 0 0 10px rgba(0,255,204,0.2);
+        }
+        .speed-number {
+            font-size: 2.8rem;
+            font-weight: 900;
+            line-height: 1;
+            color: #00ffcc;
+            font-family: monospace;
+        }
+        .speed-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #6b7280;
+        }
         .control-panel {
-            margin-top: 15px;
+            margin-top: 20px;
         }
     </style>
 </head>
@@ -121,43 +121,47 @@
 
 <div class="app-container">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h4 class="m-0"><i class="bi bi-speedometer2 text-info"></i> GPS Video Tracker</h4>
+        <h5 class="m-0 text-info"><i class="bi bi-car-front-fill"></i> GPS Dashcam Recorder</h5>
         <span id="recStatusIndicator" class="badge bg-secondary"><i class="bi bi-circle-fill"></i> Listo</span>
     </div>
 
-    <!-- Contenedor del Video -->
-    <div class="video-wrapper shadow">
-        <video id="webcam" autoplay playsinline muted></video>
-        <canvas id="renderCanvas"></canvas>
+    <!-- Contenedor Estilo Coche (Video arriba + Tablero abajo) -->
+    <div class="dashcam-container">
+        
+        <!-- Ventana del Video (Limpiar de elementos invasivos) -->
+        <div class="video-viewport">
+            <video id="webcam" autoplay playsinline muted></video>
+            <canvas id="renderCanvas"></canvas>
 
-        <!-- Capa Superior HTML (Previsualización) -->
-        <div class="hud-top">
-            <div>
-                <div id="hudDateTime" class="fw-bold font-monospace" style="font-size: 1rem;">--/--/---- --:--:--</div>
-                <div id="hudCoords" class="text-light font-monospace" style="font-size: 0.85rem;">Lat: --.-- | Lon: --.--</div>
-            </div>
-            <div id="hudRecBadge" class="d-none">
-                <span class="record-pulse"></span> <span id="timerText" class="font-monospace ms-1 fw-bold">00:00</span>
+            <!-- Indicador sutil de grabación en curso -->
+            <div id="hudRecBadge" class="video-hud-top d-none">
+                <span class="badge bg-dark bg-opacity-75 text-danger border border-danger">
+                    <span class="record-pulse"></span> <span id="timerText" class="font-monospace ms-1">00:00</span>
+                </span>
             </div>
         </div>
 
-        <!-- Capa Inferior HTML (Previsualización) -->
-        <div class="hud-bottom">
-            <div class="gps-status-ui font-monospace">
-                <div><i class="bi bi-broadcast"></i> GPS: <span id="gpsAccuracy">Buscando...</span></div>
-                <div><i class="bi bi-alt"></i> Altitud: <span id="hudAlt">--</span> m</div>
+        <!-- Tablero de Instrumentos Inferior (No invasivo, simula el interior del auto) -->
+        <div class="car-dashboard">
+            <div class="dashboard-telemetry">
+                <div class="mb-1"><i class="bi bi-calendar-event text-info"></i> <span id="dashDate" class="highlight-text">--/--/----</span></div>
+                <div class="mb-1"><i class="bi bi-clock text-info"></i> <span id="dashTime" class="highlight-text">--:--:--</span></div>
+                <div class="mb-1"><i class="bi bi-geo-alt text-danger"></i> <span id="dashCoords" class="highlight-text">Lat: -- | Lon: --</span></div>
+                <div><i class="bi bi-broadcast text-warning"></i> GPS: <span id="dashGps" class="highlight-text">Buscando...</span></div>
             </div>
-            <div class="speedometer-box-ui">
-                <div id="hudSpeed" class="speed-value-ui">0</div>
-                <div class="speed-unit-ui">km/h</div>
+            
+            <div class="dashboard-speedometer">
+                <div id="dashSpeed" class="speed-number">0</div>
+                <div class="speed-label">km/h</div>
             </div>
         </div>
+
     </div>
 
-    <!-- Controles -->
+    <!-- Controles de Grabación -->
     <div class="control-panel d-grid gap-2">
         <button id="btnToggleRecord" class="btn btn-danger btn-lg py-3 fw-bold shadow">
-            <i class="bi bi-record-circle"></i> Iniciar Grabación con GPS Ampliado
+            <i class="bi bi-record-circle"></i> Iniciar Dashcam
         </button>
         <a id="downloadLink" style="display: none;" class="btn btn-success btn-lg py-3">
             <i class="bi bi-download"></i> Descargar Video Grabado
@@ -167,9 +171,9 @@
     <!-- Historial -->
     <div class="card bg-dark text-light mt-4 border-secondary">
         <div class="card-body">
-            <h6 class="card-title"><i class="bi bi-folder2-open"></i> Historial de Grabaciones</h6>
+            <h6 class="card-title"><i class="bi bi-folder2-open"></i> Archivos Guardados</h6>
             <div id="videoHistory" class="list-group list-group-flush bg-transparent mt-2">
-                <small class="text-muted">No hay grabaciones previas en esta sesión.</small>
+                <small class="text-muted">No hay grabaciones previas.</small>
             </div>
         </div>
     </div>
@@ -189,11 +193,12 @@
     const timerText = document.getElementById('timerText');
     const videoHistory = document.getElementById('videoHistory');
 
-    const hudDateTime = document.getElementById('hudDateTime');
-    const hudCoords = document.getElementById('hudCoords');
-    const hudSpeed = document.getElementById('hudSpeed');
-    const hudAccuracy = document.getElementById('gpsAccuracy');
-    const hudAlt = document.getElementById('hudAlt');
+    // Elementos del tablero HTML visual
+    const dashDate = document.getElementById('dashDate');
+    const dashTime = document.getElementById('dashTime');
+    const dashCoords = document.getElementById('dashCoords');
+    const dashGps = document.getElementById('dashGps');
+    const dashSpeed = document.getElementById('dashSpeed');
 
     let mediaRecorder;
     let recordedChunks = [];
@@ -210,14 +215,14 @@
     async function initCamera() {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
-                video: { width: { ideal: 1080 }, height: { ideal: 1920 }, facingMode: "environment" },
+                video: { width: { ideal: 1280 }, height: { ideal: 960 }, facingMode: "environment" },
                 audio: true
             });
             webcam.srcObject = stream;
             webcam.onloadedmetadata = () => {
-                // Forzamos resolución HD vertical estándar para garantizar nitidez en el texto impreso
+                // Resolución optimizada para guardar el video completo incluyendo el panel inferior impreso
                 renderCanvas.width = 1080;
-                renderCanvas.height = 1920;
+                renderCanvas.height = 1440; // Relación 3:4 (Video arriba + Tablero abajo quemado en el video)
                 startRenderLoop();
             };
         } catch (err) {
@@ -242,14 +247,14 @@
                 currentAlt = position.coords.altitude ? Math.round(position.coords.altitude) : 0;
                 currentAccuracy = Math.round(position.coords.accuracy);
 
-                hudSpeed.innerText = currentSpeed;
-                hudCoords.innerText = `Lat: ${currentLat.toFixed(5)} | Lon: ${currentLon.toFixed(5)}`;
-                hudAccuracy.innerText = `${currentAccuracy}m`;
-                hudAlt.innerText = currentAlt;
+                // Actualizar interfaz del tablero visual
+                dashSpeed.innerText = currentSpeed;
+                dashCoords.innerText = `Lat: ${currentLat.toFixed(4)} | Lon: ${currentLon.toFixed(4)}`;
+                dashGps.innerText = `±${currentAccuracy}m | Alt: ${currentAlt}m`;
             },
             (error) => {
                 console.warn("GPS Warning: ", error.message);
-                hudAccuracy.innerText = "Sin señal";
+                dashGps.innerText = "Sin señal GPS";
             },
             options
         );
@@ -258,84 +263,85 @@
     function startRenderLoop() {
         function render() {
             if (webcam.readyState === webcam.HAVE_ENOUGH_DATA) {
-                // 1. Dibujar imagen de la cámara cubriendo todo el canvas
-                ctx.drawImage(webcam, 0, 0, renderCanvas.width, renderCanvas.height);
+                const canvasW = renderCanvas.width;
+                const canvasH = renderCanvas.height;
+                const videoAreaH = canvasW * 0.75; // Altura reservada para el video (parabrisas limpio)
+
+                // 1. DIBUJAR VIDEO LIMPIO EN LA PARTE SUPERIOR
+                ctx.drawImage(webcam, 0, 0, canvasW, videoAreaH);
+
+                // 2. DIBUJAR EL TABLERO DE INSTRUMENTOS EN LA PARTE INFERIOR DEL VIDEO (Quemado para la grabación)
+                ctx.save();
+                // Fondo oscuro sólido para el tablero
+                ctx.fillStyle = '#111827';
+                ctx.fillRect(0, videoAreaH, canvasW, canvasH - videoAreaH);
+
+                // Línea separadora superior del tablero
+                ctx.strokeStyle = '#374151';
+                ctx.lineWidth = 6;
+                ctx.beginPath();
+                ctx.moveTo(0, videoAreaH);
+                ctx.lineTo(canvasW, videoAreaH);
+                ctx.stroke();
 
                 const now = new Date();
                 const dateStr = now.toLocaleDateString();
                 const timeStr = now.toLocaleTimeString();
 
-                // -------------------------------------------------------------
-                // 2. FRANJA SUPERIOR AMPLIADA (Ocupa el 100% del ancho)
-                // -------------------------------------------------------------
-                ctx.save();
-                const topGrad = ctx.createLinearGradient(0, 0, 0, 180);
-                topGrad.addColorStop(0, 'rgba(0, 0, 0, 0.9)');
-                topGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-                ctx.fillStyle = topGrad;
-                ctx.fillRect(0, 0, renderCanvas.width, 180);
-
-                // Textos grandes y legibles en la parte superior
+                // Textos de telemetría a la izquierda del tablero impreso
+                ctx.fillStyle = '#9ca3af';
+                ctx.font = 'bold 30px monospace';
+                ctx.fillText(`FECHA:`, 50, videoAreaH + 65);
                 ctx.fillStyle = '#ffffff';
-                ctx.font = 'bold 44px monospace';
-                ctx.fillText(`${dateStr}  -  ${timeStr}`, 50, 75);
+                ctx.fillText(dateStr, 200, videoAreaH + 65);
 
+                ctx.fillStyle = '#9ca3af';
+                ctx.fillText(`HORA:`, 50, videoAreaH + 120);
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText(timeStr, 200, videoAreaH + 120);
+
+                ctx.fillStyle = '#9ca3af';
+                ctx.fillText(`GPS:`, 50, videoAreaH + 175);
                 ctx.fillStyle = '#00ffcc';
-                ctx.font = 'bold 36px monospace';
-                ctx.fillText(`Lat: ${currentLat.toFixed(5)}  |  Lon: ${currentLon.toFixed(5)}`, 50, 135);
-                ctx.restore();
+                ctx.font = 'bold 26px monospace';
+                ctx.fillText(`Lat:${currentLat.toFixed(4)} Lon:${currentLon.toFixed(4)}`, 200, videoAreaH + 175);
 
-                // -------------------------------------------------------------
-                // 3. FRANJA INFERIOR AMPLIADA (Velocímetro y Datos GPS de lado a lado)
-                // -------------------------------------------------------------
-                ctx.save();
-                const botGrad = ctx.createLinearGradient(0, renderCanvas.height - 220, 0, renderCanvas.height);
-                botGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
-                botGrad.addColorStop(1, 'rgba(0, 0, 0, 0.9)');
-                ctx.fillStyle = botGrad;
-                ctx.fillRect(0, renderCanvas.height - 220, renderCanvas.width, 220);
-
-                // Panel izquierdo inferior: Precisión y Altitud en tamaño legible
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-                ctx.lineWidth = 3;
-                ctx.beginPath();
-                ctx.roundRect(50, renderCanvas.height - 160, 450, 110, 15);
-                ctx.fill();
-                ctx.stroke();
-
+                ctx.fillStyle = '#9ca3af';
+                ctx.font = 'bold 30px monospace';
+                ctx.fillText(`ALT/PREC:`, 50, videoAreaH + 230);
                 ctx.fillStyle = '#ffffff';
-                ctx.font = 'bold 32px monospace';
-                ctx.fillText(`GPS (±${currentAccuracy}m)`, 80, renderCanvas.height - 105);
-                ctx.fillText(`Altitud: ${currentAlt} m`, 80, renderCanvas.height - 60);
+                ctx.fillText(`${currentAlt}m (±${currentAccuracy}m)`, 240, videoAreaH + 230);
 
-                // Panel derecho inferior: Velocímetro grande y destacado
-                const speedBoxWidth = 430;
-                const speedBoxX = renderCanvas.width - speedBoxWidth - 50;
-                
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                // Caja del Velocímetro a la derecha del tablero impreso
+                const speedBoxW = 320;
+                const speedBoxH = 200;
+                const speedBoxX = canvasW - speedBoxW - 50;
+                const speedBoxY = videoAreaH + 40;
+
+                ctx.fillStyle = '#030712';
                 ctx.strokeStyle = '#00ffcc';
-                ctx.lineWidth = 4;
+                ctx.lineWidth = 5;
                 ctx.beginPath();
-                ctx.roundRect(speedBoxX, renderCanvas.height - 180, speedBoxWidth, 130, 20);
+                ctx.roundRect(speedBoxX, speedBoxY, speedBoxW, speedBoxH, 20);
                 ctx.fill();
                 ctx.stroke();
 
-                // Valor de la velocidad
+                // Valor numérico de la velocidad gigante
                 ctx.fillStyle = '#00ffcc';
-                ctx.font = 'bold 85px monospace';
+                ctx.font = 'bold 110px monospace';
                 ctx.textAlign = 'center';
-                ctx.fillText(currentSpeed, speedBoxX + (speedBoxWidth / 2) - 40, renderCanvas.height - 85);
+                ctx.fillText(currentSpeed, speedBoxX + (speedBoxW / 2), speedBoxY + 130);
 
-                // Unidad (KM/H)
-                ctx.fillStyle = '#ffffff';
-                ctx.font = 'bold 28px sans-serif';
-                ctx.fillText('KM/H', speedBoxX + (speedBoxWidth / 2) + 120, renderCanvas.height - 95);
+                // Unidad KM/H
+                ctx.fillStyle = '#9ca3af';
+                ctx.font = 'bold 24px sans-serif';
+                ctx.fillText('KM/H', speedBoxX + (speedBoxW / 2), speedBoxY + 175);
 
                 ctx.restore();
 
-                // Actualizar interfaz HTML superior
-                hudDateTime.innerText = `${dateStr} ${timeStr}`;
+                // Actualizar interfaz HTML en vivo del navegador
+                dashDate.innerText = dateStr;
+                dashTime.innerText = timeStr;
             }
             requestAnimationFrame(render);
         }
@@ -367,7 +373,7 @@
         try {
             mediaRecorder = new MediaRecorder(canvasStream, options);
         } catch (e) {
-            alert("No se pudo iniciar el grabador de video: " + e.message);
+            alert("No se pudo iniciar el grabador: " + e.message);
             return;
         }
 
@@ -382,9 +388,9 @@
             const videoURL = URL.createObjectURL(blob);
             
             downloadLink.href = videoURL;
-            downloadLink.download = `GPS_Video_HD_${new Date().toISOString().slice(0,10)}.webm`;
+            downloadLink.download = `Dashcam_Video_${new Date().toISOString().slice(0,10)}.webm`;
             downloadLink.style.display = 'block';
-            downloadLink.innerHTML = `<i class="bi bi-download"></i> Descargar Video (${Math.round(blob.size / 1024 / 1024 * 10) / 10} MB)`;
+            downloadLink.innerHTML = `<i class="bi bi-download"></i> Descargar Video del Tablero (${Math.round(blob.size / 1024 / 1024 * 10) / 10} MB)`;
 
             saveToHistory(videoURL);
         };
@@ -395,7 +401,7 @@
         btnToggleRecord.className = "btn btn-secondary btn-lg py-3 fw-bold shadow";
         btnToggleRecord.innerHTML = `<i class="bi bi-stop-circle"></i> Detener Grabación`;
         recStatusIndicator.className = "badge bg-danger animate-pulse";
-        recStatusIndicator.innerHTML = `<i class="bi bi-circle-fill"></i> Grabando HD...`;
+        recStatusIndicator.innerHTML = `<i class="bi bi-circle-fill"></i> Grabando...`;
         hudRecBadge.classList.remove('d-none');
         downloadLink.style.display = 'none';
 
@@ -414,7 +420,7 @@
 
         clearInterval(timerInterval);
         btnToggleRecord.className = "btn btn-danger btn-lg py-3 fw-bold shadow";
-        btnToggleRecord.innerHTML = `<i class="bi bi-record-circle"></i> Iniciar Grabación con GPS Ampliado`;
+        btnToggleRecord.innerHTML = `<i class="bi bi-record-circle"></i> Iniciar Dashcam`;
         recStatusIndicator.className = "badge bg-secondary";
         recStatusIndicator.innerHTML = `<i class="bi bi-circle-fill"></i> Listo`;
         hudRecBadge.classList.add('d-none');
@@ -424,8 +430,8 @@
         const item = document.createElement('div');
         item.className = 'list-group-item bg-transparent text-light d-flex justify-content-between align-items-center border-secondary';
         item.innerHTML = `
-            <span><i class="bi bi-file-earmark-play text-info"></i> Grabación HD (${new Date().toLocaleTimeString()})</span>
-            <a href="${url}" download="video_gps.webm" class="btn btn-sm btn-outline-light"><i class="bi bi-download"></i></a>
+            <span><i class="bi bi-file-earmark-play text-info"></i> Dashcam (${new Date().toLocaleTimeString()})</span>
+            <a href="${url}" download="dashcam.webm" class="btn btn-sm btn-outline-light"><i class="bi bi-download"></i></a>
         `;
         videoHistory.prepend(item);
     }
