@@ -149,7 +149,7 @@
 
     </div>
 
-    <!-- Botón para alternar cámara en caso de error de hardware -->
+    <!-- Botón para alternar cámara -->
     <div class="mt-2 text-end">
         <button id="btnSwitchCamera" class="btn btn-sm btn-outline-secondary">
             <i class="bi bi-camera-rotate"></i> Cambiar Cámara
@@ -203,56 +203,118 @@
     let isRecording = false;
     let startTime;
     let timerInterval;
+    let renderLoopStarted = false;
 
     let currentSpeed = 0;
     let currentLat = 0;
     let currentLon = 0;
     let currentAlt = 0;
     let currentAccuracy = 0;
-    let useFrontCamera = false; // Por defecto arrancamos con la trasera (environment)
+    
+    let videoDevices = [];
+    let currentDeviceIndex = 0;
 
-    // Inicializar Cámara con manejo robusto de facingMode
-    async function initCamera() {
-        // Detener stream previo si existe
+    // Inicializar y detectar cámaras disponibles
+    async function initCameraSystem() {
+        try {
+            // Solicitar un permiso inicial para que el navegador liste los nombres y IDs de las cámaras
+            const initialStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            initialStream.getTracks().forEach(track => track.stop()); // Detener el temporal
+
+            // Obtener lista de dispositivos de video
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            videoDevices = devices.filter(device => device.kind === 'videoinput');
+
+            if (videoDevices.length > 0) {
+                // Intentar buscar por defecto una cámara trasera ("back", "rear", "environment")
+                const backCameraIndex = videoDevices.findIndex(d => 
+                    d.label.toLowerCase().includes('back') || 
+                    d.label.toLowerCase().includes('trasera') || 
+                    d.label.toLowerCase().includes('environment') ||
+                    d.label.toLowerCase().includes('wide')
+                );
+                
+                // Si encuentra una trasera, la selecciona; si no, toma la última de la lista (suele ser la principal trasera en móviles)
+                currentDeviceIndex = backCameraIndex !== -1 ? backCameraIndex : (videoDevices.length > 1 ? videoDevices.length - 1 : 0);
+            }
+
+            await startStreamWithCurrentDevice();
+
+        } catch (err) {
+            console.warn("No se pudo enumerar dispositivos, intentando método estándar...", err);
+            await startFallbackCamera();
+        }
+    }
+
+    // Iniciar cámara usando el ID de dispositivo específico
+    async function startStreamWithCurrentDevice() {
         if (webcam.srcObject) {
             webcam.srcObject.getTracks().forEach(track => track.stop());
         }
 
         const constraints = {
-            video: {
-                width: { ideal: 1280 },
-                height: { ideal: 960 },
-                facingMode: useFrontCamera ? "user" : { exact: "environment" }
-            },
+            video: videoDevices.length > 0 ? { deviceId: { exact: videoDevices[currentDeviceIndex].deviceId } } : { facingMode: "environment" },
             audio: true
         };
 
         try {
-            let stream;
-            try {
-                stream = await navigator.mediaDevices.getUserMedia(constraints);
-            } catch (err) {
-                // Si el dispositivo falla con { exact: "environment" } (algunos celulares antiguos), intentamos modo flexible
-                console.warn("Fallo con exact environment, intentando modo flexible...", err);
-                constraints.video.facingMode = useFrontCamera ? "user" : "environment";
-                stream = await navigator.mediaDevices.getUserMedia(constraints);
-            }
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            webcam.srcObject = stream;
+            
+            webcam.onloadedmetadata = () => {
+                renderCanvas.width = 1080;
+                renderCanvas.height = 1440;
+                if (!renderLoopStarted) {
+                    renderLoopStarted = true;
+                    startRenderLoop();
+                }
+            };
+        } catch (err) {
+            console.warn("Error con deviceId exacto, usando fallback...", err);
+            await startFallbackCamera();
+        }
+    }
 
+    // Fallback por facingMode si falla el ID
+    async function startFallbackCamera() {
+        if (webcam.srcObject) {
+            webcam.srcObject.getTracks().forEach(track => track.stop());
+        }
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: "environment" },
+                audio: true
+            });
             webcam.srcObject = stream;
             webcam.onloadedmetadata = () => {
                 renderCanvas.width = 1080;
                 renderCanvas.height = 1440;
-                startRenderLoop();
+                if (!renderLoopStarted) {
+                    renderLoopStarted = true;
+                    startRenderLoop();
+                }
             };
-        } catch (err) {
-            alert("No se pudo acceder a la cámara trasera. Asegúrate de dar permisos o abrir el sitio mediante HTTPS/localhost. Detalle: " + err.message);
+        } catch (e) {
+            alert("Error crítico al abrir la cámara: " + e.message);
         }
     }
 
-    // Botón manual para alternar entre cámara trasera y delantera si el hardware lo requiere
-    btnSwitchCamera.addEventListener('click', () => {
-        useFrontCamera = !useFrontCamera;
-        initCamera();
+    // Botón para rotar entre todas las cámaras disponibles del dispositivo
+    btnSwitchCamera.addEventListener('click', async () => {
+        if (videoDevices.length > 1) {
+            currentDeviceIndex = (currentDeviceIndex + 1) % videoDevices.length;
+            await startStreamWithCurrentDevice();
+        } else {
+            // Si solo detecta una o ninguna listada, alternar por facingMode clásico
+            useFront = !window.useFront;
+            window.useFront = useFront;
+            if (webcam.srcObject) webcam.srcObject.getTracks().forEach(t => t.stop());
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: useFront ? "user" : "environment" },
+                audio: true
+            });
+            webcam.srcObject = stream;
+        }
     });
 
     function initGPS() {
@@ -291,8 +353,10 @@
                 const canvasH = renderCanvas.height;
                 const videoAreaH = canvasW * 0.75;
 
+                // Dibujar video limpio arriba
                 ctx.drawImage(webcam, 0, 0, canvasW, videoAreaH);
 
+                // Dibujar Tablero abajo
                 ctx.save();
                 ctx.fillStyle = '#111827';
                 ctx.fillRect(0, videoAreaH, canvasW, canvasH - videoAreaH);
@@ -452,7 +516,7 @@
     }
 
     window.onload = () => {
-        initCamera();
+        initCameraSystem();
         initGPS();
     };
 </script>
