@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GPS Video Recorder - Telemetría en Vivo</title>
+    <title>GPS Video Recorder - Telemetría Ampliada</title>
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
@@ -39,65 +39,64 @@
             left: 0;
         }
         #webcam {
-            display: none; /* Se procesa a través del canvas */
+            display: none;
         }
-        /* Capa de Información Superior (No invasiva) */
+        /* HUD Superior Visual en Pantalla */
         .hud-top {
             position: absolute;
             top: 0;
             left: 0;
             right: 0;
-            background: linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 100%);
-            padding: 12px 15px;
-            font-size: 0.8rem;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0) 100%);
+            padding: 15px;
+            font-size: 0.9rem;
             color: #fff;
             display: flex;
             justify-content: space-between;
-            align-items: flex-start;
+            align-items: center;
             z-index: 10;
             pointer-events: none;
         }
-        /* Capa de Velocímetro Inferior (No invasiva) */
+        /* HUD Inferior Visual en Pantalla */
         .hud-bottom {
             position: absolute;
             bottom: 0;
             left: 0;
             right: 0;
-            background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%);
+            background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0) 100%);
             padding: 20px 15px 15px 15px;
             display: flex;
             justify-content: space-between;
-            align-items: flex-end;
+            align-items: center;
             z-index: 10;
             pointer-events: none;
         }
-        .speedometer-box {
-            background: rgba(0, 0, 0, 0.6);
-            border: 2px solid rgba(255, 255, 255, 0.2);
-            backdrop-filter: blur(4px);
+        .speedometer-box-ui {
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid rgba(0, 255, 204, 0.4);
             border-radius: 10px;
-            padding: 8px 16px;
+            padding: 10px 20px;
             text-align: center;
         }
-        .speed-value {
-            font-size: 2rem;
-            font-weight: 800;
+        .speed-value-ui {
+            font-size: 2.2rem;
+            font-weight: 900;
             line-height: 1;
             color: #00ffcc;
             font-family: monospace;
         }
-        .speed-unit {
-            font-size: 0.7rem;
+        .speed-unit-ui {
+            font-size: 0.75rem;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 2px;
             color: #aaa;
         }
-        .gps-status {
-            font-size: 0.75rem;
-            background: rgba(0,0,0,0.6);
-            padding: 6px 10px;
-            border-radius: 6px;
-            backdrop-filter: blur(4px);
+        .gps-status-ui {
+            font-size: 0.85rem;
+            background: rgba(0,0,0,0.7);
+            padding: 10px 15px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.2);
         }
         .record-pulse {
             width: 14px;
@@ -126,51 +125,49 @@
         <span id="recStatusIndicator" class="badge bg-secondary"><i class="bi bi-circle-fill"></i> Listo</span>
     </div>
 
-    <!-- Contenedor del Video / Visor -->
+    <!-- Contenedor del Video -->
     <div class="video-wrapper shadow">
-        <!-- Elemento de video fuente oculto -->
         <video id="webcam" autoplay playsinline muted></video>
-        <!-- Canvas donde se renderiza la cámara + HUD (Grabable) -->
         <canvas id="renderCanvas"></canvas>
 
-        <!-- Capa Superior HUD (Fecha, Hora, Coordenadas) -->
+        <!-- Capa Superior HTML (Previsualización) -->
         <div class="hud-top">
             <div>
-                <div id="hudDateTime" class="fw-bold font-monospace">--/--/---- --:--:--</div>
-                <div id="hudCoords" class="text-light opacity-75 font-monospace" style="font-size: 0.7rem;">Lat: --.-- | Lon: --.--</div>
+                <div id="hudDateTime" class="fw-bold font-monospace" style="font-size: 1rem;">--/--/---- --:--:--</div>
+                <div id="hudCoords" class="text-light font-monospace" style="font-size: 0.85rem;">Lat: --.-- | Lon: --.--</div>
             </div>
             <div id="hudRecBadge" class="d-none">
-                <span class="record-pulse"></span> <span id="timerText" class="font-monospace ms-1">00:00</span>
+                <span class="record-pulse"></span> <span id="timerText" class="font-monospace ms-1 fw-bold">00:00</span>
             </div>
         </div>
 
-        <!-- Capa Inferior HUD (Velocímetro y Precisión) -->
+        <!-- Capa Inferior HTML (Previsualización) -->
         <div class="hud-bottom">
-            <div class="gps-status">
+            <div class="gps-status-ui font-monospace">
                 <div><i class="bi bi-broadcast"></i> GPS: <span id="gpsAccuracy">Buscando...</span></div>
-                <div><i class="bi bi-alt"></i> Alt: <span id="hudAlt">--</span> m</div>
+                <div><i class="bi bi-alt"></i> Altitud: <span id="hudAlt">--</span> m</div>
             </div>
-            <div class="speedometer-box">
-                <div id="hudSpeed" class="speed-value">0</div>
-                <div class="speed-unit">km/h</div>
+            <div class="speedometer-box-ui">
+                <div id="hudSpeed" class="speed-value-ui">0</div>
+                <div class="speed-unit-ui">km/h</div>
             </div>
         </div>
     </div>
 
-    <!-- Controles de Grabación -->
+    <!-- Controles -->
     <div class="control-panel d-grid gap-2">
         <button id="btnToggleRecord" class="btn btn-danger btn-lg py-3 fw-bold shadow">
-            <i class="bi bi-record-circle"></i> Iniciar Grabación con GPS
+            <i class="bi bi-record-circle"></i> Iniciar Grabación con GPS Ampliado
         </button>
         <a id="downloadLink" style="display: none;" class="btn btn-success btn-lg py-3">
             <i class="bi bi-download"></i> Descargar Video Grabado
         </a>
     </div>
 
-    <!-- Listado de videos guardados localmente -->
+    <!-- Historial -->
     <div class="card bg-dark text-light mt-4 border-secondary">
         <div class="card-body">
-            <h6 class="card-title"><i class="bi bi-folder2-open"></i> Historial de Grabaciones (Guardadas en navegador)</h6>
+            <h6 class="card-title"><i class="bi bi-folder2-open"></i> Historial de Grabaciones</h6>
             <div id="videoHistory" class="list-group list-group-flush bg-transparent mt-2">
                 <small class="text-muted">No hay grabaciones previas en esta sesión.</small>
             </div>
@@ -178,7 +175,6 @@
     </div>
 </div>
 
-<!-- Bootstrap JS Bundle -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
@@ -193,7 +189,6 @@
     const timerText = document.getElementById('timerText');
     const videoHistory = document.getElementById('videoHistory');
 
-    // Elementos HUD Visuales
     const hudDateTime = document.getElementById('hudDateTime');
     const hudCoords = document.getElementById('hudCoords');
     const hudSpeed = document.getElementById('hudSpeed');
@@ -206,14 +201,12 @@
     let startTime;
     let timerInterval;
 
-    // Estado del GPS
-    let currentSpeed = 0; // km/h
+    let currentSpeed = 0;
     let currentLat = 0;
     let currentLon = 0;
     let currentAlt = 0;
     let currentAccuracy = 0;
 
-    // Inicializar Cámara
     async function initCamera() {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
@@ -222,8 +215,9 @@
             });
             webcam.srcObject = stream;
             webcam.onloadedmetadata = () => {
-                renderCanvas.width = webcam.videoWidth || 720;
-                renderCanvas.height = webcam.videoHeight || 1280;
+                // Forzamos resolución HD vertical estándar para garantizar nitidez en el texto impreso
+                renderCanvas.width = 1080;
+                renderCanvas.height = 1920;
                 startRenderLoop();
             };
         } catch (err) {
@@ -231,22 +225,16 @@
         }
     }
 
-    // Inicializar Geolocalización GPS
     function initGPS() {
         if (!navigator.geolocation) {
-            alert("La geolocalización no está soportada en este navegador.");
+            alert("La geolocalización no está soportada.");
             return;
         }
 
-        const options = {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 0
-        };
+        const options = { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 };
 
         navigator.geolocation.watchPosition(
             (position) => {
-                // position.speed viene en metros por segundo (m/s). Convertimos a km/h (* 3.6)
                 const speedMs = position.coords.speed;
                 currentSpeed = speedMs !== null && !isNaN(speedMs) ? Math.round(speedMs * 3.6) : 0;
                 currentLat = position.coords.latitude;
@@ -254,90 +242,99 @@
                 currentAlt = position.coords.altitude ? Math.round(position.coords.altitude) : 0;
                 currentAccuracy = Math.round(position.coords.accuracy);
 
-                // Actualizar UI en Pantalla
                 hudSpeed.innerText = currentSpeed;
                 hudCoords.innerText = `Lat: ${currentLat.toFixed(5)} | Lon: ${currentLon.toFixed(5)}`;
                 hudAccuracy.innerText = `${currentAccuracy}m`;
                 hudAlt.innerText = currentAlt;
             },
             (error) => {
-                console.warn("Error de GPS: ", error.message);
+                console.warn("GPS Warning: ", error.message);
                 hudAccuracy.innerText = "Sin señal";
             },
             options
         );
     }
 
-    // Bucle de Renderizado en Canvas (Superpone la telemetría en tiempo real sobre el video)
     function startRenderLoop() {
         function render() {
             if (webcam.readyState === webcam.HAVE_ENOUGH_DATA) {
-                // 1. Dibujar fotograma de cámara
+                // 1. Dibujar imagen de la cámara cubriendo todo el canvas
                 ctx.drawImage(webcam, 0, 0, renderCanvas.width, renderCanvas.height);
 
-                // 2. Preparar datos de Fecha y Hora actual
                 const now = new Date();
                 const dateStr = now.toLocaleDateString();
                 const timeStr = now.toLocaleTimeString();
 
-                // --- DIBUJAR HUD SUPERIOR (No invasivo) ---
+                // -------------------------------------------------------------
+                // 2. FRANJA SUPERIOR AMPLIADA (Ocupa el 100% del ancho)
+                // -------------------------------------------------------------
                 ctx.save();
-                // Fondo semitransparente superior
-                const topGrad = ctx.createLinearGradient(0, 0, 0, renderCanvas.height * 0.15);
-                topGrad.addColorStop(0, 'rgba(0, 0, 0, 0.7)');
+                const topGrad = ctx.createLinearGradient(0, 0, 0, 180);
+                topGrad.addColorStop(0, 'rgba(0, 0, 0, 0.9)');
                 topGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
                 ctx.fillStyle = topGrad;
-                ctx.fillRect(0, 0, renderCanvas.width, renderCanvas.height * 0.15);
+                ctx.fillRect(0, 0, renderCanvas.width, 180);
 
+                // Textos grandes y legibles en la parte superior
                 ctx.fillStyle = '#ffffff';
-                ctx.font = 'bold 24px monospace';
-                ctx.fillText(`${dateStr} ${timeStr}`, 30, 45);
+                ctx.font = 'bold 44px monospace';
+                ctx.fillText(`${dateStr}  -  ${timeStr}`, 50, 75);
 
-                ctx.font = '18px monospace';
-                ctx.fillStyle = '#cccccc';
-                ctx.fillText(`Lat: ${currentLat.toFixed(5)} | Lon: ${currentLon.toFixed(5)} (±${currentAccuracy}m)`, 30, 75);
+                ctx.fillStyle = '#00ffcc';
+                ctx.font = 'bold 36px monospace';
+                ctx.fillText(`Lat: ${currentLat.toFixed(5)}  |  Lon: ${currentLon.toFixed(5)}`, 50, 135);
                 ctx.restore();
 
-                // --- DIBUJAR HUD INFERIOR (Velocímetro y Altitud) ---
+                // -------------------------------------------------------------
+                // 3. FRANJA INFERIOR AMPLIADA (Velocímetro y Datos GPS de lado a lado)
+                // -------------------------------------------------------------
                 ctx.save();
-                const botGrad = ctx.createLinearGradient(0, renderCanvas.height * 0.85, 0, renderCanvas.height);
+                const botGrad = ctx.createLinearGradient(0, renderCanvas.height - 220, 0, renderCanvas.height);
                 botGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
-                botGrad.addColorStop(1, 'rgba(0, 0, 0, 0.8)');
+                botGrad.addColorStop(1, 'rgba(0, 0, 0, 0.9)');
                 ctx.fillStyle = botGrad;
-                ctx.fillRect(0, renderCanvas.height * 0.85, renderCanvas.width, renderCanvas.height * 0.15);
+                ctx.fillRect(0, renderCanvas.height - 220, renderCanvas.width, 220);
 
-                // Caja del Velocímetro (Esquina Inferior Derecha)
-                const boxWidth = 220;
-                const boxHeight = 110;
-                const boxX = renderCanvas.width - boxWidth - 30;
-                const boxY = renderCanvas.height - boxHeight - 40;
-
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+                // Panel izquierdo inferior: Precisión y Altitud en tamaño legible
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
                 ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
                 ctx.lineWidth = 3;
                 ctx.beginPath();
-                ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 15);
+                ctx.roundRect(50, renderCanvas.height - 160, 450, 110, 15);
                 ctx.fill();
                 ctx.stroke();
 
-                // Texto de velocidad
-                ctx.fillStyle = '#00ffcc';
-                ctx.font = 'bold 55px monospace';
-                ctx.textAlign = 'center';
-                ctx.fillText(currentSpeed, boxX + (boxWidth / 2), boxY + 60);
-
-                ctx.fillStyle = '#aaaaaa';
-                ctx.font = 'bold 16px sans-serif';
-                ctx.fillText('KM/H', boxX + (boxWidth / 2), boxY + 92);
-
-                // Info de Altitud / GPS (Esquina Inferior Izquierda)
-                ctx.textAlign = 'left';
                 ctx.fillStyle = '#ffffff';
-                ctx.font = '18px monospace';
-                ctx.fillText(`Altitud: ${currentAlt} m`, 30, renderCanvas.height - 60);
+                ctx.font = 'bold 32px monospace';
+                ctx.fillText(`GPS (±${currentAccuracy}m)`, 80, renderCanvas.height - 105);
+                ctx.fillText(`Altitud: ${currentAlt} m`, 80, renderCanvas.height - 60);
+
+                // Panel derecho inferior: Velocímetro grande y destacado
+                const speedBoxWidth = 430;
+                const speedBoxX = renderCanvas.width - speedBoxWidth - 50;
+                
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                ctx.strokeStyle = '#00ffcc';
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.roundRect(speedBoxX, renderCanvas.height - 180, speedBoxWidth, 130, 20);
+                ctx.fill();
+                ctx.stroke();
+
+                // Valor de la velocidad
+                ctx.fillStyle = '#00ffcc';
+                ctx.font = 'bold 85px monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText(currentSpeed, speedBoxX + (speedBoxWidth / 2) - 40, renderCanvas.height - 85);
+
+                // Unidad (KM/H)
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 28px sans-serif';
+                ctx.fillText('KM/H', speedBoxX + (speedBoxWidth / 2) + 120, renderCanvas.height - 95);
+
                 ctx.restore();
 
-                // Actualizar interfaz visual superior en tiempo real
+                // Actualizar interfaz HTML superior
                 hudDateTime.innerText = `${dateStr} ${timeStr}`;
             }
             requestAnimationFrame(render);
@@ -345,7 +342,6 @@
         requestAnimationFrame(render);
     }
 
-    // Control de Grabación
     btnToggleRecord.addEventListener('click', () => {
         if (!isRecording) {
             startRecording();
@@ -356,8 +352,7 @@
 
     function startRecording() {
         recordedChunks = [];
-        // Capturar stream del Canvas con audio de la cámara
-        const canvasStream = renderCanvas.captureStream(30); // 30 FPS
+        const canvasStream = renderCanvas.captureStream(30);
         const audioStream = webcam.srcObject.getAudioTracks();
         
         if (audioStream.length > 0) {
@@ -387,26 +382,23 @@
             const videoURL = URL.createObjectURL(blob);
             
             downloadLink.href = videoURL;
-            downloadLink.download = `GPS_Video_${new Date().toISOString().slice(0,10)}.webm`;
+            downloadLink.download = `GPS_Video_HD_${new Date().toISOString().slice(0,10)}.webm`;
             downloadLink.style.display = 'block';
             downloadLink.innerHTML = `<i class="bi bi-download"></i> Descargar Video (${Math.round(blob.size / 1024 / 1024 * 10) / 10} MB)`;
 
-            // Guardar referencia en localStorage / historial visual
             saveToHistory(videoURL);
         };
 
         mediaRecorder.start();
         isRecording = true;
         
-        // Cambiar estados visuales
         btnToggleRecord.className = "btn btn-secondary btn-lg py-3 fw-bold shadow";
         btnToggleRecord.innerHTML = `<i class="bi bi-stop-circle"></i> Detener Grabación`;
         recStatusIndicator.className = "badge bg-danger animate-pulse";
-        recStatusIndicator.innerHTML = `<i class="bi bi-circle-fill"></i> Grabando...`;
+        recStatusIndicator.innerHTML = `<i class="bi bi-circle-fill"></i> Grabando HD...`;
         hudRecBadge.classList.remove('d-none');
         downloadLink.style.display = 'none';
 
-        // Iniciar temporizador
         startTime = Date.now();
         timerInterval = setInterval(() => {
             const elapsed = Math.floor((Date.now() - startTime) / 1000);
@@ -422,7 +414,7 @@
 
         clearInterval(timerInterval);
         btnToggleRecord.className = "btn btn-danger btn-lg py-3 fw-bold shadow";
-        btnToggleRecord.innerHTML = `<i class="bi bi-record-circle"></i> Iniciar Grabación con GPS`;
+        btnToggleRecord.innerHTML = `<i class="bi bi-record-circle"></i> Iniciar Grabación con GPS Ampliado`;
         recStatusIndicator.className = "badge bg-secondary";
         recStatusIndicator.innerHTML = `<i class="bi bi-circle-fill"></i> Listo`;
         hudRecBadge.classList.add('d-none');
@@ -432,13 +424,12 @@
         const item = document.createElement('div');
         item.className = 'list-group-item bg-transparent text-light d-flex justify-content-between align-items-center border-secondary';
         item.innerHTML = `
-            <span><i class="bi bi-file-earmark-play text-info"></i> Grabación de ${new Date().toLocaleTimeString()}</span>
+            <span><i class="bi bi-file-earmark-play text-info"></i> Grabación HD (${new Date().toLocaleTimeString()})</span>
             <a href="${url}" download="video_gps.webm" class="btn btn-sm btn-outline-light"><i class="bi bi-download"></i></a>
         `;
         videoHistory.prepend(item);
     }
 
-    // Inicializar al cargar la página
     window.onload = () => {
         initCamera();
         initGPS();
